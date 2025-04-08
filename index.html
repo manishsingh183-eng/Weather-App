@@ -67,7 +67,7 @@
                 <div class="search-history">
                     <h3><i class="fas fa-history"></i> Recent Searches</h3>
                     <div class="history-items" id="historyItems">
-                        <!-- History items will be added here dynamically -->
+                        
                     </div>
                     <div class="clear-history" onclick="clearHistory()">
                         <i class="fas fa-trash-alt"></i> Clear History
@@ -79,64 +79,164 @@
                 </button>
             </div>
         </div>
-    </div>
+     </div>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var long;
+        var lat;
+        var flag = 0;
+        let searchHistory = JSON.parse(localStorage.getItem('weatherSearchHistory')) || [];
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                document.getElementById('demo').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting your location...';
+                navigator.geolocation.getCurrentPosition(
+                    showPosition,
+                    function (error) {
+                        document.getElementById('demo').innerHTML = '<i class="fas fa-exclamation-circle"></i> Location access denied. Please enable location services or search by city name.';
+                    }
+                );
+                flag = 1;
+            } else {
+                document.getElementById('demo').innerHTML = '<i class="fas fa-exclamation-circle"></i> Geolocation is not supported by this browser.';
+            }
+        }
+
+        function showPosition(position) {
+            lat = position.coords.latitude;
+            long = position.coords.longitude;
+            weather();
+        }
+
+        function fun1() {
+            var val = document.getElementById('input1').value;
+            if (val.trim() === "") {
+                document.getElementById('demo').innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a city name';
+                return;
+            }
+            flag = 0;
+            document.getElementById('demo').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading weather data...';
+            weather();
+        }
+
+        function weather() {
+            var link;
+            if (flag == 0) {
+                var val = document.getElementById('input1').value;
+                if (!val) return;
+                link = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(val) + "&appid=5896de008b21d003c4219d15900f635f&units=metric";
+
+                addToHistory(val);
+            } else {
+                link = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + long + "&appid=5896de008b21d003c4219d15900f635f&units=metric";
+            }
+
+            fetch(link)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('City not found');
+                    }
+                    return response.json();
+                })
+                .then(obj => {
+                    console.log(obj);
+                    document.getElementById('weather').innerHTML = obj.weather[0].description;
+                    document.getElementById('location').innerHTML = obj.name + (obj.sys.country ? ", " + obj.sys.country : "");
+                    document.getElementById('temp').innerHTML = Math.round(obj.main.temp);
+                    document.getElementById('icon').src = "https://openweathermap.org/img/w/" + obj.weather[0].icon + ".png";
+
+                    
+                    document.getElementById('temp-max').innerHTML = Math.round(obj.main.temp_max) + "°";
+                    document.getElementById('temp-min').innerHTML = Math.round(obj.main.temp_min) + "°";
+                    document.getElementById('humidity').innerHTML = obj.main.humidity + "%";
+                    document.getElementById('wind').innerHTML = obj.wind.speed + "m/s";
+
+                    document.getElementById('demo').innerHTML = "";
+
+                
+                    updateCardStyle(obj.main.temp);
+                })
+                .catch(error => {
+                    document.getElementById('demo').innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + error.message;
+                    resetWeatherDisplay();
+                });
+        }
+
+        function updateCardStyle(temp) {
+            const card = document.querySelector('.card');
+            if (temp > 30) {
+          
+                card.style.background = 'linear-gradient(135deg, #FF9A8B 0%, #FF6B95 100%)';
+            } else if (temp > 20) {
+              
+                card.style.background = 'linear-gradient(135deg, #FFD3A5 0%, #FD6585 100%)';
+            } else if (temp > 10) {
+              
+                card.style.background = 'linear-gradient(135deg, #A1C4FD 0%, #C2E9FB 100%)';
+            } else {
+            
+                card.style.background = 'linear-gradient(135deg, #74EBD5 0%, #9FACE6 100%)';
+            }
+        }
+
+        function resetWeatherDisplay() {
+            document.getElementById('location').innerHTML = "--";
+            document.getElementById('weather').innerHTML = "--";
+            document.getElementById('temp').innerHTML = "--";
+            document.getElementById('icon').src = "";
+            document.getElementById('temp-max').innerHTML = "--°";
+            document.getElementById('temp-min').innerHTML = "--°";
+            document.getElementById('humidity').innerHTML = "--%";
+            document.getElementById('wind').innerHTML = "--m/s";
+            document.querySelector('.card').style.background = "white";
+        }
+
+        function saveHistory() {
+            localStorage.setItem('weatherSearchHistory', JSON.stringify(searchHistory));
+        }
+
+        function addToHistory(city) {
+            searchHistory = searchHistory.filter(item => item.toLowerCase() !== city.toLowerCase());
+
+            searchHistory.unshift(city);
+
+            if (searchHistory.length > 5) {
+                searchHistory = searchHistory.slice(0, 5);
+            }
+
+            saveHistory();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyContainer = document.getElementById('historyItems');
+            historyContainer.innerHTML = '';
+
+            searchHistory.forEach(city => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `<i class="fas fa-search"></i> ${city}`;
+                item.onclick = () => {
+                    document.getElementById('input1').value = city;
+                    fun1();
+                };
+                historyContainer.appendChild(item);
+            });
+        }
+
+        function clearHistory() {
+            searchHistory = [];
+            saveHistory();
+            renderHistory();
+        }
+
+      
+        window.onload = function () {
+            renderHistory();
+            document.getElementById('input1').value = "Paris";
+            fun1();
+        };
+    </script>
 </body>
-<script src="https://code.jquery.com/jquery-3.6.3.js" integrity="sha256-nQLuAZGRRcILA+6dMBOvcRh5Pe310sBpanc6+QBmyVM="
-        crossorigin="anonymous"></script>
-<script>
-    var long;
-    var lat;
-    var flag = 0;
-    console.log(flag);
-    function getLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(showPosition);
-            flag = 1;
-        } else {
-            prompt("Geolocation is not supported by this browser.");
-        }
-    }
 
-    function showPosition(position) {
-        lat = position.coords.latitude;
-        long = position.coords.longitude;
-        weather();
-
-    }
-    var val;
-    function fun1(){
-        val=document.getElementById('input1').value;
-        flag=0;
-        weather();
-    }
-    // var val = prompt("enter a city/country name");
-    // weather();
-    function weather() {
-        console.log(flag);
-        if(flag==0) {
-            link = "https://api.openweathermap.org/data/2.5/weather?q=" + val + "&appid=5896de008b21d003c4219d15900f635f";
-        }
-        else {
-        console.log("flag=1");
-        link = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + long + "&appid=5896de008b21d003c4219d15900f635f"
-        }
-        var request = new XMLHttpRequest();
-        request.open('GET', link, true)
-        request.onload = function () {
-            var obj = JSON.parse(this.response);
-            console.log(obj);
-            document.getElementById('weather').innerHTML = obj.weather[0].description;
-            document.getElementById('location').innerHTML = " " + obj.name;
-            document.getElementById('temp').innerHTML = Math.round(obj.main.temp - 273.15);
-            document.getElementById('icon').src = "https://openweathermap.org/img/w/" + obj.weather[0].icon + ".png";
-        }
-        if (request.status >= 200 && request.status < 400) {
-            var temp = obj.main.temp;
-
-        } else {
-            console.log("The city data is not available");
-        }
-        request.send();
-    }
-</script>
 </html>
